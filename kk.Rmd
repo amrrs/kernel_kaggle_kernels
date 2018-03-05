@@ -1,0 +1,182 @@
+---
+title: "A Kernel about Kernels"
+author: "nulldata"
+output: 
+    html_document:
+        toc: yes
+        theme: cosmo
+        highlight: tango
+        code_folding: hide
+---
+
+### What's this kernel about
+
+This kernel analyses the dataset `Upvoted Kaggle Kernels` that contains data of most upvoted Kaggle Kernels. The data was collected on  26 Feb 2018.
+
+
+Let us begin loading the input dataset and necessary packages.
+
+```{r}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.width=8, fig.height=6)
+
+```
+
+```{r}
+
+values <- read.csv('voted-kaggle-kernels.csv', header = T, stringsAsFactors = F)
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+library(knitr)
+library(ggthemes)
+library(tidytext)
+library(highcharter)
+```
+
+### Summary of Kernels dataset
+
+```{r}
+str(values) 
+```
+
+### The obvious Outcomes
+
+#### Distribution of Votes
+
+```{r}
+
+hchart(values$Votes, name = 'Votes') %>% hc_add_theme(hc_theme_ft()) 
+
+```
+
+That's disturbingly right-skewed, because of certain big shot Kernels that drags the tail long into the right. 
+
+#### Distribution of Comments
+
+```{r}
+
+hchart(values$Comments, name = 'Comments') %>% hc_add_theme(hc_theme_ft()) 
+
+```
+
+
+#### Distribution of Views
+
+```{r}
+
+hchart(values$Views, name = 'Views') %>% hc_add_theme(hc_theme_ft()) 
+
+```
+
+
+#### Distribution of Forks
+
+```{r}
+
+hchart(values$Forks, name = 'Forks') %>% hc_add_theme(hc_theme_ft()) 
+
+```
+
+### Popular Language and Code Type
+
+```{r}
+
+values %>% group_by(Code.Type, Language) %>%  count() %>% 
+  hchart("column", hcaes(x = Code.Type, y = n, group = Language))
+
+
+```
+
+This shouldn't come as any surprise! `Python Notebook` wins! 
+
+### Votes and Comments - Correlation
+
+```{r}
+
+values %>% filter(Comments > 0 & Votes > 0) %>% 
+  hchart("scatter", hcaes(x = Votes, y = Comments, group = Language))
+
+
+```
+
+Clearly, there's a positive correlation between Votes and Comments and once again, it's no surprise that Python seems to get more of those two. 
+
+### Votes and Forks - Correlation
+
+
+Not so positive correlation between Votes and Forks. 
+
+```{r}
+
+values %>% filter(Forks > 0 & Votes > 0) %>% 
+  hchart("scatter", hcaes(x = Votes, y = Forks, group = Language))
+
+
+```
+
+### The Toppers 
+
+
+#### With Votes
+
+```{r}
+
+values %>%  group_by(Owner) %>% summarise(Votes = sum(Votes)) %>% arrange(desc(Votes)) %>% 
+ top_n(10) %>% 
+  hchart("column", hcaes(x = Owner, y = Votes))
+
+ 
+```
+
+`Anistropic`, `Heads or Tails` and `SRK` are the top 3 in this. Remember, this ranking is based on the number of Votes, which means one of their Kernels could've been massive hit and perhaps, they're not a consistent performer. 
+
+#### With Counts 
+
+
+```{r}
+
+values %>%  group_by(Owner) %>% summarize(n = n()) %>% arrange(desc(n)) %>% top_n(30) %>% 
+  hchart("column", hcaes(x = Owner, y = n))
+
+ 
+```
+
+Now, there's a new player - `Dan B` on the top.
+
+#### With Median (Average Votes)
+
+
+```{r}
+
+values %>%  group_by(Owner) %>% summarize(n = median(Votes)) %>% arrange(desc(n)) %>% top_n(30) %>% 
+  hchart("column", hcaes(x = Owner, y = n))
+
+ 
+```
+
+With Median Votes being the Ranking Factor, once again the list has changed but this time drastically. `Guido Zuidhof`, `Pedro Marcelino`, `Manav Sehgal` are on Top 3.
+
+
+### What about the correlation between Number of Versions and Votes
+
+```{r}
+
+values$number_versions <- stringr::str_count(string = values$Version.History, pattern = '|')
+
+
+values %>% filter(number_versions > 0 & Votes > 0) %>% 
+  hchart("scatter", hcaes(x = Votes, y = number_versions)) %>% 
+ #hc_xAxis(type = "logarithmic") #%>% 
+ hc_yAxis(type = "logarithmic")
+
+
+```
+
+Not necessarily there's a very high correlation, It can be seen that highly voted Kernels have been ran more than min. 100 times. Remember, It doesn't mean if you run your Kernel 100x times, your's will be a popular kernel ;) 
+
+
